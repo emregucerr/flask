@@ -453,7 +453,6 @@ class Blueprint(Scaffold):
         for blueprint, bp_options in self._blueprints:
             bp_options = bp_options.copy()
             bp_url_prefix = bp_options.get("url_prefix")
-
             if bp_url_prefix is None:
                 bp_url_prefix = blueprint.url_prefix
 
@@ -465,6 +464,20 @@ class Blueprint(Scaffold):
                 bp_options["url_prefix"] = bp_url_prefix
             elif state.url_prefix is not None:
                 bp_options["url_prefix"] = state.url_prefix
+
+            # Calculate the new subdomain dependency.
+            bp_subdomain = bp_options.get("subdomain")
+            if bp_subdomain is None:
+                bp_subdomain = blueprint.subdomain
+
+            # If there is a parent subdomain, concatenate it with the current subdomain.
+            if state.subdomain and bp_subdomain:
+                bp_subdomain = f"{state.subdomain}.{bp_subdomain}"
+            elif state.subdomain:
+                bp_subdomain = state.subdomain
+
+            # Update the subdomain in the blueprint options.
+            bp_options["subdomain"] = bp_subdomain
 
             bp_options["name_prefix"] = name
             blueprint.register(app, bp_options)
