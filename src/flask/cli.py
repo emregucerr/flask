@@ -440,6 +440,15 @@ class AppGroup(click.Group):
         return click.Group.group(self, *args, **kwargs)
 
 
+class CustomFlaskGroup(FlaskGroup):
+
+    def make_context(self, info_name, args, parent=None, **extra):
+        obj = extra.get('obj', None)
+        if obj is None:
+            obj = ScriptInfo(create_app=self.create_app, set_debug_flag=self.set_debug_flag)
+            extra['obj'] = obj
+        return super(CustomFlaskGroup, self).make_context(info_name, args, parent=parent, **extra)
+
 class FlaskGroup(AppGroup):
     """Special subclass of the :class:`AppGroup` group that supports
     loading more commands from the configured Flask app.  Normally a
@@ -962,7 +971,7 @@ def routes_command(sort: str, all_methods: bool) -> None:
         click.echo(row.format(rule.endpoint, methods, rule.rule).rstrip())
 
 
-cli = FlaskGroup(
+cli = CustomFlaskGroup(
     help="""\
 A general utility script for Flask applications.
 
