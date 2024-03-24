@@ -716,11 +716,20 @@ class CertParamType(click.ParamType):
             raise
 
 
+def _validate_cert(ctx, param, value):
+    """Callback to validate the '--cert' option."""
+    if value is not None:
+        key = ctx.params.get('key')
+        if key and not isinstance(value, tuple):
+            # If a key is provided and cert is not already a tuple, combine them
+            return value, key
+    return value
+
 def _validate_key(ctx, param, value):
     """The ``--key`` option must be specified when ``--cert`` is a file.
     Modifies the ``cert`` param to be a ``(cert, key)`` pair if needed.
     """
-    cert = ctx.params.get("cert")
+    cert = ctx.params.get("cert", None)
     is_adhoc = cert == "adhoc"
     is_context = ssl and isinstance(cert, ssl.SSLContext)
 
@@ -763,7 +772,10 @@ class SeparatedPathType(click.Path):
 @click.option("--host", "-h", default="127.0.0.1", help="The interface to bind to.")
 @click.option("--port", "-p", default=5000, help="The port to bind to.")
 @click.option(
-    "--cert", type=CertParamType(), help="Specify a certificate file to use HTTPS."
+    "--cert",
+    type=CertParamType(),
+    help="Specify a certificate file to use HTTPS.",
+    callback=_validate_cert,
 )
 @click.option(
     "--key",
