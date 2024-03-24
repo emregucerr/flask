@@ -22,6 +22,7 @@ from werkzeug.routing import MapAdapter
 from werkzeug.routing import RequestRedirect
 from werkzeug.routing import RoutingException
 from werkzeug.routing import Rule
+from werkzeug.utils import redirect as wz_redirect
 from werkzeug.wrappers import Response as BaseResponse
 
 from . import cli
@@ -801,6 +802,23 @@ class Flask(Scaffold):
     def debug(self, value: bool) -> None:
         self.config["DEBUG"] = value
         self.jinja_env.auto_reload = self.templates_auto_reload
+
+    def redirect(self, location, code=302, Response=None):
+        """Redirects the client to the target location. Supports the same
+        behavior as the :func:`redirect` function in the :mod:`werkzeug.utils`
+        module but is method of the Flask application object which makes it
+        possible to easily redirect from views.
+
+        :param location: the location the response should redirect to.
+        :param code: the redirect status code. defaults to 302.
+        :param Response: a Response class to use when instantiating a
+                         response. The default is :attr:`response_class`.
+
+        .. versionadded:: 2.2
+        """
+        if Response is None:
+            Response = self.response_class
+        return Response(location, status=code, headers=[('Location', location)])
 
     def run(
         self,
