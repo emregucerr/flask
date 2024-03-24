@@ -339,7 +339,7 @@ class DispatchingApp:
         exc_info = self._bg_loading_exc_info
         if exc_info is not None:
             self._bg_loading_exc_info = None
-            raise exc_info
+            raise exc_info[1].with_traceback(exc_info[2])
 
     def _load_unlocked(self):
         __traceback_hide__ = True  # noqa: F841
@@ -550,6 +550,10 @@ class FlaskGroup(AppGroup):
         # continuing if the app couldn't be loaded.
         try:
             return info.load_app().cli.get_command(ctx, name)
+        except Exception as e:
+            if getattr(self, "_dispatching", False):
+                raise
+            click.secho(f"Error: {e}\n", err=True, fg="red")
         except NoAppException as e:
             click.secho(f"Error: {e.format_message()}\n", err=True, fg="red")
 
