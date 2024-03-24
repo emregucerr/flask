@@ -11,6 +11,8 @@ from itertools import chain
 from types import TracebackType
 from urllib.parse import quote as _url_quote
 
+from flask import current_app
+from flask.cli import with_appcontext
 import click
 from werkzeug.datastructures import Headers
 from werkzeug.datastructures import ImmutableDict
@@ -32,6 +34,9 @@ from werkzeug.wrappers import Response as BaseResponse
 
 from . import cli
 from . import typing as ft
+from flask.cli import with_appcontext
+from flask import current_app
+import click
 from .config import Config
 from .config import ConfigAttribute
 from .ctx import _AppCtxGlobals
@@ -102,7 +107,30 @@ def _make_timedelta(value: t.Union[timedelta, int, None]) -> t.Optional[timedelt
     return timedelta(seconds=value)
 
 
+from flask.cli import with_appcontext
+import click
+
 class Flask(Scaffold):
+
+    @cli.command('routes_with_domains')
+    @with_appcontext
+    def routes_with_domains():
+        output = []
+        for rule in current_app.url_map.iter_rules():
+            methods = ', '.join(sorted(rule.methods))
+            domain = current_app.config['SERVER_NAME']
+            subdomain = rule.subdomain or ''
+            if subdomain:
+                full_domain = f"{subdomain}.{domain}"
+            else:
+                full_domain = domain or "<local>"
+            rule_line = f"{full_domain:30} {rule.endpoint:30} {methods:20} {rule}"
+            output.append(rule_line)
+        
+        click.echo(f"{'Domain':30} {'Endpoint':30} {'Methods':20} {'Rule'}")
+        click.echo('-' * 90)
+        for line in sorted(output):
+            click.echo(line)
     """The flask object implements a WSGI application and acts as the central
     object.  It is passed the name of the module or package of the
     application.  Once it is created it will act as a central registry for
