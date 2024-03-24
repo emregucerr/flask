@@ -42,7 +42,7 @@ from .helpers import get_env
 from .helpers import get_flashed_messages
 from .helpers import get_load_dotenv
 from .helpers import locked_cached_property
-from .helpers import url_for
+from .helpers import url_for, _split_blueprint_path
 from .json import jsonify
 from .logging import create_logger
 from .scaffold import _endpoint_from_view_func
@@ -1028,6 +1028,16 @@ class Flask(Scaffold):
 
         .. versionadded:: 0.7
         """
+        # Generate a unique name for the blueprint registration if not provided
+        name = options.get('name', blueprint.name)
+        if self.blueprints.get(name):
+            suffix = 2
+            while self.blueprints.get(f"{name}_{suffix}"):
+                suffix += 1
+            name = f"{name}_{suffix}"
+        
+        options.setdefault('name', name)
+        
         blueprint.register(self, options)
 
     def iter_blueprints(self) -> t.ValuesView["Blueprint"]:
@@ -2091,3 +2101,21 @@ class Flask(Scaffold):
         wrapped to apply middleware.
         """
         return self.wsgi_app(environ, start_response)
+    def url_for(self, endpoint: str, **values: t.Any) -> str:
+        """Generates a URL to the given endpoint with the method provided."""
+
+        # Add logic to handle prefixed endpoints for multiple registrations of blueprints
+        blueprint_name, _ = _split_blueprint_path(endpoint)
+        if blueprint_name:
+            blueprint = self.blueprints.get(blueprint_name)
+            if blueprint:
+                rules_map = blueprint.url_rules
+                for rule_name, rule_list in rules_map.items():
+                    for rule in rule_list:
+                        if rule.endpoint == endpoint:
+                            # Use the rule's actual endpoint name
+                            endpoint = rule_name
+                            break
+
+        # Call super to continue with the default `url_for` behavior
+        return super().url_for(endpoint, **values)
