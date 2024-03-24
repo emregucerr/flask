@@ -1,6 +1,7 @@
 import os
 import typing as t
 from collections import defaultdict
+from typing import Dict, List
 from functools import update_wrapper
 
 from .scaffold import _endpoint_from_view_func
@@ -94,8 +95,12 @@ class BlueprintSetupState:
             else:
                 rule = self.url_prefix
         options.setdefault("subdomain", self.subdomain)
-        if endpoint is None:
-            endpoint = _endpoint_from_view_func(view_func)  # type: ignore
+        registration_name = self.options.get('name')
+        if registration_name:
+            endpoint = f"{registration_name}.{endpoint}" if endpoint else registration_name
+        else:
+            if endpoint is None:
+                endpoint = _endpoint_from_view_func(view_func)  # type: ignore
         defaults = self.url_defaults
         if "defaults" in options:
             defaults = dict(defaults, **options.pop("defaults"))
@@ -164,6 +169,9 @@ class Blueprint(Scaffold):
 
     warn_on_modifications = False
     _got_registered_once = False
+
+    #: Stores the URL rules and related view handlers for this blueprint
+    url_rules: Dict[str, List["Rule"]] = defaultdict(list)
 
     #: Blueprint local JSON encoder class to use. Set to ``None`` to use
     #: the app's :class:`~flask.Flask.json_encoder`.
@@ -417,6 +425,12 @@ class Blueprint(Scaffold):
         if view_func and hasattr(view_func, "__name__") and "." in view_func.__name__:
             raise ValueError("'view_func' name may not contain a dot '.' character.")
 
+        def store_rule(setup_state: BlueprintSetupState) -> None:
+            from werkzeug.routing import Rule
+            rule_obj = Rule(rule, endpoint=endpoint, **options)
+            setup_state.blueprint.url_rules[endpoint].append(rule_obj)
+
+        self.record(store_rule)
         self.record(
             lambda s: s.add_url_rule(
                 rule,
