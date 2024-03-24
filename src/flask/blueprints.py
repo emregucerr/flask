@@ -182,6 +182,8 @@ class Blueprint(Scaffold):
         root_path: t.Optional[str] = None,
         cli_group: t.Optional[str] = _sentinel,  # type: ignore
     ):
+        if not name:
+            raise ValueError("The 'name' parameter must not be empty. Please provide a non-empty name for the blueprint.")
         super().__init__(
             import_name=import_name,
             static_folder=static_folder,
